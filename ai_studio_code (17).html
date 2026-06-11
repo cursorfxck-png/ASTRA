@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sneakcares Custom – Sneakcares Team!</title>
+    
+    <!-- Importing the exact Geist font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Supabase JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            /* Theme Variables */
+            --font-body-family: 'Geist', sans-serif;
+            --color-background: #ffffff;
+            --color-foreground: #1c1c1c;
+            --color-foreground-75: rgba(28, 28, 28, 0.75);
+            --color-button: #1c1c1c;
+            --color-button-text: #ffffff;
+            --color-footer-bg: #1c1c1c;
+            --color-footer-fg: #f6f6f6;
+            --page-width: 120rem;
+            --border-radius: 0.6rem;
+            --transition: 0.3s ease;
+            --grid-desktop-spacing: 2rem;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { font-size: 62.5%; scroll-behavior: smooth; }
+        
+        body {
+            font-family: var(--font-body-family);
+            font-size: 1.6rem;
+            letter-spacing: 0.06rem;
+            line-height: 1.6;
+            color: var(--color-foreground-75);
+            background-color: var(--color-background);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5 { color: var(--color-foreground); font-weight: 400; margin: 0; }
+        a { text-decoration: none; color: inherit; }
+        img, video { max-width: 100%; height: auto; display: block; object-fit: cover; }
+        
+        .page-width { max-width: var(--page-width); margin: 0 auto; padding: 0 3rem; }
+
+        /* --- BUTTONS --- */
+        .button {
+            display: inline-flex; justify-content: center; align-items: center;
+            background-color: var(--color-button); color: var(--color-button-text);
+            padding: 1.2rem 3rem; border-radius: var(--border-radius);
+            font-size: 1.5rem; letter-spacing: 0.1rem; border: 0.1rem solid var(--color-button);
+            transition: var(--transition); cursor: pointer;
+        }
+        .button:hover { background-color: transparent; color: var(--color-button); box-shadow: 0 0 0 0.1rem var(--color-button); }
+
+        /* --- HEADER --- */
+        .section-header { position: sticky; top: 0; background: var(--color-background); z-index: 100; border-bottom: 1px solid rgba(0,0,0,0.08); }
+        .header {
+            display: grid;
+            grid-template-areas: "empty heading icons" "navigation navigation navigation";
+            grid-template-columns: 1fr auto 1fr; align-items: center;
+            padding: 2rem 3rem; max-width: var(--page-width); margin: 0 auto;
+        }
+        .header__heading { grid-area: heading; justify-self: center; margin-bottom: 1.5rem; }
+        .header__heading-logo { width: 270px; }
+        
+        .header__icons { grid-area: icons; justify-self: end; display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem; }
+        .header__icon { color: var(--color-foreground); cursor: pointer; transition: transform 0.2s ease; }
+        .header__icon:hover { transform: scale(1.1); }
+        .header__icon svg { width: 2.2rem; height: 2.2rem; }
+        .cart-icon svg { width: 3.2rem; height: 3.2rem; } /* Adjusted Cart Size */
+
+        .header__inline-menu { grid-area: navigation; justify-self: center; }
+        .list-menu--inline { display: flex; gap: 3rem; list-style: none; }
+        .list-menu__item { font-size: 1.5rem; color: var(--color-foreground); padding: 0.5rem 0; position: relative; }
+        .list-menu__item:hover span, .header__active-menu-item { text-decoration: underline; text-decoration-thickness: 0.2rem; text-underline-offset: 0.4rem; }
+        .mobile-menu-btn { display: none; }
+
+        /* --- MOBILE DRAWER --- */
+        .drawer-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 150;
+            opacity: 0; visibility: hidden; transition: 0.3s ease;
+        }
+        .drawer-overlay.active { opacity: 1; visibility: visible; }
+        
+        .mobile-drawer {
+            position: fixed; top: 0; left: 0; width: 300px; height: 100%;
+            background: #fff; z-index: 200; transform: translateX(-100%);
+            transition: 0.3s ease; display: flex; flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        .mobile-drawer.active { transform: translateX(0); }
+        .drawer-header { padding: 2rem 3rem; display: flex; justify-content: flex-end; border-bottom: 1px solid #eee; }
+        .drawer-close { background: none; border: none; cursor: pointer; color: var(--color-foreground); }
+        .drawer-close svg { width: 2.4rem; height: 2.4rem; }
+        .drawer-nav { padding: 2rem 3rem; list-style: none; display: flex; flex-direction: column; gap: 2rem; }
+        .drawer-nav a { font-size: 1.8rem; color: var(--color-foreground); }
+
+        /* --- HERO SLIDESHOW --- */
+        .slideshow { position: relative; width: 100%; height: 65vh; background: #f4f4f4; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .slide {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0; transition: opacity 0.8s ease-in-out;
+            display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5rem; z-index: 1;
+        }
+        .slide.active { opacity: 1; z-index: 2; }
+        .slide img, .slide video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+        .slide-content { z-index: 3; }
+        .video-controls {
+            position: absolute; top: 2rem; right: 2rem; background: rgba(0,0,0,0.5); color: #fff;
+            border: none; border-radius: 50%; width: 5rem; height: 5rem; cursor: pointer; z-index: 10;
+            display: flex; align-items: center; justify-content: center; font-size: 2rem;
+        }
+
+        /* --- RICH TEXT --- */
+        .rich-text { text-align: center; padding: 6rem 2rem; max-width: 80rem; margin: 0 auto; }
+        .rich-text h2 { font-size: 3.6rem; font-weight: 700; margin-bottom: 2rem; color: var(--color-foreground); }
+        .rich-text p { font-size: 1.6rem; margin-bottom: 3rem; }
+
+        /* --- GRIDS & CARDS --- */
+        .title-wrapper { margin: 5rem 0 3rem; }
+        .title { font-size: 3rem; font-weight: 400; color: var(--color-foreground); }
+        .grid { display: grid; gap: var(--grid-desktop-spacing); }
+        .grid--4-col { grid-template-columns: repeat(4, 1fr); }
+        .grid--3-col { grid-template-columns: repeat(3, 1fr); }
+        
+        .card-wrapper { display: block; }
+        .card__media { border-radius: var(--border-radius); overflow: hidden; background: #f4f4f4; position: relative; }
+        .ratio { position: relative; }
+        .ratio::before { content: ""; display: block; padding-bottom: var(--ratio-percent); }
+        .ratio img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transition: transform 0.5s ease; }
+        .card-wrapper:hover .ratio img { transform: scale(1.05); }
+        .card__content { padding-top: 1.5rem; }
+        .card__heading { font-size: 1.5rem; color: var(--color-foreground); line-height: 1.4; transition: 0.3s; }
+        .card-wrapper:hover .card__heading { text-decoration: underline; text-underline-offset: 0.3rem; }
+        .price { font-size: 1.4rem; margin-top: 0.5rem; color: var(--color-foreground-75); }
+
+        /* --- COLLAGE --- */
+        .collage-section { padding: 4rem 0; }
+        .collage { display: grid; grid-template-columns: 2fr 1fr; gap: var(--grid-desktop-spacing); }
+        .collage.collage--right { grid-template-columns: 1fr 2fr; }
+        .collage__item--large { grid-row: span 2; }
+        .collage__item--large .card__media::before { padding-bottom: 133.9%; }
+        .collage .card__media::before { padding-bottom: 100%; }
+        .view-all-center { text-align: center; margin-top: 4rem; }
+
+        /* --- NEWSLETTER --- */
+        .newsletter { padding: 6rem 2rem; text-align: center; }
+        .newsletter h2 { font-size: 3rem; margin-bottom: 1.5rem; color: var(--color-foreground); }
+        .newsletter-form {
+            display: flex; max-width: 45rem; margin: 3rem auto 0;
+            border: 1px solid rgba(0,0,0,0.4); border-radius: var(--border-radius);
+            transition: box-shadow 0.3s ease;
+        }
+        .newsletter-form:focus-within { box-shadow: 0 0 0 1px var(--color-foreground); }
+        .newsletter-form input { flex: 1; padding: 1.5rem; border: none; outline: none; font-size: 1.5rem; font-family: inherit; background: transparent; }
+        .newsletter-form button { background: transparent; border: none; padding: 0 2rem; cursor: pointer; color: var(--color-foreground); }
+
+        /* --- FOOTER --- */
+        .footer { background-color: var(--color-footer-bg); color: var(--color-footer-fg); padding: 6rem 0 4rem; margin-top: 4rem; }
+        .footer__content-bottom-wrapper { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 2rem; }
+        .footer__localization { display: flex; gap: 2.5rem; }
+        .localization-selector { background: transparent; border: none; color: var(--color-footer-fg); display: flex; align-items: center; gap: 1rem; cursor: pointer; font-size: 1.4rem; padding: 1rem 0; font-family: inherit; }
+        .localization-selector svg { width: 1rem; height: 1rem; }
+        .footer__copyright { font-size: 1.3rem; color: rgba(246, 246, 246, 0.7); margin-top: 2rem; display: flex; gap: 1rem; flex-direction: column; }
+        .cms-toggle { background: #333; color: #fff; padding: 0.8rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; margin-top: 1rem; font-size: 1.3rem; font-family: inherit; transition: 0.2s;}
+        .cms-toggle:hover { background: #555; }
+
+        /* --- CMS PANEL --- */
+        #cms-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f4f6f8; z-index: 1000; overflow-y: auto; }
+        .cms-header { background: #1c1c1c; color: #fff; padding: 2rem; display: flex; justify-content: space-between; }
+        .cms-close { background: #ff4d4f; border: none; color: white; padding: 1rem 2rem; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .cms-container { display: grid; grid-template-columns: 250px 1fr; gap: 2rem; padding: 2rem; max-width: 1400px; margin: 0 auto; min-height: calc(100vh - 80px); }
+        .cms-nav { background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); align-self: start;}
+        .cms-nav button { display: block; width: 100%; padding: 1rem; margin-bottom: 1rem; text-align: left; background: none; border: 1px solid #ddd; cursor: pointer; font-size: 1.4rem; border-radius: 4px;}
+        .cms-nav button.active { background: #1c1c1c; color: #fff; }
+        .cms-content { background: #fff; padding: 3rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .cms-form { display: flex; flex-direction: column; gap: 1.5rem; margin-bottom: 4rem; border-bottom: 1px solid #eee; padding-bottom: 2rem; }
+        .cms-form label { font-size: 1.4rem; font-weight: 600; color: #1c1c1c;}
+        .cms-form input, .cms-form select, .cms-form textarea { padding: 1rem; font-size: 1.4rem; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; }
+        .cms-form button { background: #1c1c1c; color: white; border: none; padding: 1.2rem; font-size: 1.5rem; cursor: pointer; border-radius: 4px; transition: 0.2s;}
+        .cms-form button:hover { opacity: 0.8; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 1.4rem; color: #1c1c1c;}
+        .data-table th, .data-table td { padding: 1.2rem; text-align: left; border-bottom: 1px solid #ddd; }
+        .data-table img { width: 60px; height: 60px; object-fit: cover; border-radius: 4px; }
+        .btn-delete { background: #ff4d4f; color: #fff; border: none; padding: 0.6rem 1.2rem; cursor: pointer; border-radius: 4px; }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 990px) {
+            .grid--4-col, .grid--3-col { grid-template-columns: repeat(2, 1fr); }
+            .header { grid-template-areas: "left heading icons"; }
+            .header__inline-menu { display: none; }
+            .mobile-menu-btn { display: block; grid-area: left; cursor: pointer; color: var(--color-foreground); }
+            .mobile-menu-btn svg { width: 2.4rem; height: 2.4rem; }
+            .cms-container { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 750px) {
+            .grid--4-col, .grid--3-col, .collage { grid-template-columns: 1fr; }
+            .collage.collage--right { grid-template-columns: 1fr; }
+            .collage__item--large .card__media::before { padding-bottom: 100%; }
+            .slideshow { height: 40vh; }
+            .footer__content-bottom-wrapper { flex-direction: column; align-items: flex-start; }
+            .footer__localization { flex-direction: column; gap: 1rem; }
+            .header__heading-logo { width: 200px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ========================================== -->
+    <!-- FRONTEND VIEW                              -->
+    <!-- ========================================== -->
+    <div id="frontend-view">
+        
+        <!-- Mobile Drawer Menu -->
+        <div class="drawer-overlay" id="drawerOverlay" onclick="toggleMobileMenu()"></div>
+        <div class="mobile-drawer" id="mobileDrawer">
+            <div class="drawer-header">
+                <button class="drawer-close" onclick="toggleMobileMenu()">
+                    <svg viewBox="0 0 18 17"><path fill="currentColor" d="M.865 15.978a.5.5 0 0 0 .707.707l7.433-7.431 7.579 7.282a.501.501 0 0 0 .846-.37.5.5 0 0 0-.153-.351L9.712 8.546l7.417-7.416a.5.5 0 1 0-.707-.708L8.991 7.853 1.413.573a.5.5 0 1 0-.693.72l7.563 7.268z"/></svg>
+                </button>
+            </div>
+            <ul class="drawer-nav">
+                <li><a href="#" style="text-decoration: underline; text-underline-offset: 4px;">Home</a></li>
+                <li><a href="#">Catalog</a></li>
+                <li><a href="#">Contact</a></li>
+                <li><a href="#">Track Your Order</a></li>
+                <li><a href="#">About Us</a></li>
+            </ul>
+        </div>
+
+        <!-- Header -->
+        <div class="section-header">
+            <header class="header">
+                <!-- Hamburger Icon -->
+                <div class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                    <svg fill="none" viewBox="0 0 18 16"><path fill="currentColor" d="M1 .5a.5.5 0 1 0 0 1h15.71a.5.5 0 0 0 0-1zM.5 8a.5.5 0 0 1 .5-.5h15.71a.5.5 0 0 1 0 1H1A.5.5 0 0 1 .5 8m0 7a.5.5 0 0 1 .5-.5h15.71a.5.5 0 0 1 0 1H1a.5.5 0 0 1-.5-.5"/></svg>
+                </div>
+
+                <!-- Logo -->
+                <h1 class="header__heading">
+                    <a href="#">
+                        <img src="https://sneakcares.site/cdn/shop/files/LogoPNG_9e25c48c-ed18-41de-b75d-4bfdce598f74.png?v=1776775758&width=600" alt="Sneakcares" class="header__heading-logo">
+                    </a>
+                </h1>
+
+                <!-- Desktop Nav -->
+                <nav class="header__inline-menu">
+                    <ul class="list-menu list-menu--inline">
+                        <li><a href="#" class="list-menu__item"><span class="header__active-menu-item">Home</span></a></li>
+                        <li><a href="#" class="list-menu__item"><span>Catalog</span></a></li>
+                        <li><a href="#" class="list-menu__item"><span>Contact</span></a></li>
+                        <li><a href="#" class="list-menu__item"><span>Track Your Order</span></a></li>
+                        <li><a href="#" class="list-menu__item"><span>About Us</span></a></li>
+                    </ul>
+                </nav>
+
+                <!-- Icons -->
+                <div class="header__icons">
+                    <a href="#" class="header__icon">
+                        <svg viewBox="0 0 18 19"><path fill="currentColor" fill-rule="evenodd" d="M11.03 11.68A5.784 5.784 0 1 1 2.85 3.5a5.784 5.784 0 0 1 8.18 8.18m.26 1.12a6.78 6.78 0 1 1 .72-.7l5.4 5.4a.5.5 0 1 1-.71.7z" clip-rule="evenodd"/></svg>
+                    </a>
+                    <a href="#" class="header__icon">
+                        <svg viewBox="0 0 18 19"><path fill="currentColor" fill-rule="evenodd" d="M6 4.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0m3-4a4 4 0 1 0 0 8 4 4 0 0 0 0-8m5.58 12.15c1.12.82 1.83 2.24 1.91 4.85H1.51c.08-2.6.79-4.03 1.9-4.85C4.66 11.75 6.5 11.5 9 11.5s4.35.26 5.58 1.15M9 10.5c-2.5 0-4.65.24-6.17 1.35C1.27 12.98.5 14.93.5 18v.5h17V18c0-3.07-.77-5.02-2.33-6.15-1.52-1.1-3.67-1.35-6.17-1.35" clip-rule="evenodd"/></svg>
+                    </a>
+                    <a href="#" class="header__icon cart-icon">
+                        <svg viewBox="0 0 40 40"><path fill="currentColor" fill-rule="evenodd" d="M15.75 11.8h-3.16l-.77 11.6a5 5 0 0 0 4.99 5.34h7.38a5 5 0 0 0 4.99-5.33L28.4 11.8zm0 1h-2.22l-.71 10.67a4 4 0 0 0 3.99 4.27h7.38a4 4 0 0 0 4-4.27l-.72-10.67h-2.22v.63a4.75 4.75 0 1 1-9.5 0zm8.5 0h-7.5v.63a3.75 3.75 0 1 0 7.5 0z"/></svg>
+                    </a>
+                </div>
+            </header>
+        </div>
+
+        <!-- Hero Slideshow -->
+        <section class="slideshow" id="front-slideshow">
+            <!-- Handled dynamically by JS below -->
+        </section>
+
+        <!-- Rich Text Section -->
+        <section class="rich-text">
+            <h2 id="rt-title">Every detail carries a story.</h2>
+            <p id="rt-subtitle">For those of you who want to express yourselves, have a story worth remembering, and want to cherish an unforgettable moment.</p>
+            <a href="/collections/all" id="rt-btn" class="button">Shop Now!</a>
+        </section>
+
+        <!-- Collections Grid -->
+        <section class="page-width" style="padding-bottom: 4rem;">
+            <div class="title-wrapper">
+                <h2 class="title">Shop by Collections!</h2>
+            </div>
+            <div class="grid grid--4-col" id="front-collections">
+                 <!-- Handled dynamically by JS below -->
+            </div>
+        </section>
+
+        <!-- Collage Section 1 -->
+        <section class="collage-section page-width">
+            <h2 class="title" style="margin-bottom: 3rem;">Time to space with Snoopy!</h2>
+            <div class="collage">
+                <a href="#" class="card-wrapper collage__item--large">
+                    <div class="card__media ratio" style="--ratio-percent: 133.9%;">
+                        <img src="https://sneakcares.site/cdn/shop/files/Lu_ada_fotografer_yang_sudah_202605071840.jpg?v=1778154183&width=1500" alt="Snoopy Poster">
+                    </div>
+                </a>
+                <div style="display:flex; flex-direction:column; gap:2rem;">
+                    <a href="#" class="card-wrapper">
+                        <div class="card__media ratio" style="--ratio-percent: 108.2%;">
+                            <img src="https://sneakcares.site/cdn/shop/files/SnoopySnoopy.jpg?v=1777630113&width=1080" alt="Snoopy Sneakers">
+                        </div>
+                        <div class="card__content">
+                            <h3 class="card__heading">CUSTOM PAINT SNEAKERS SNOOPY WITH AIR FORCE</h3>
+                            <div class="price">Rp 5.400.000,00 IDR</div>
+                        </div>
+                    </a>
+                    <a href="#" class="card-wrapper">
+                        <div class="card__media ratio" style="--ratio-percent: 125%;">
+                            <img src="https://sneakcares.site/cdn/shop/collections/Koleksi_ND.jpg?v=1761524015&width=1080" alt="New Drop">
+                        </div>
+                        <div class="card__content">
+                            <h3 class="card__heading">New Drop! →</h3>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Featured Products -->
+        <section class="page-width">
+            <div class="title-wrapper">
+                <h2 class="title">New Drop from Westeros!</h2>
+            </div>
+            <div class="grid grid--3-col">
+                <a href="#" class="card-wrapper">
+                    <div class="card__media ratio" style="--ratio-percent: 100%;">
+                        <img src="https://sneakcares.site/cdn/shop/files/Game_Of_ThronesStark.jpg?v=1776148022&width=1080" alt="House Stark">
+                    </div>
+                    <div class="card__content">
+                        <h3 class="card__heading">CUSTOM SNEAKERS GAME OF THRONE HOUSE OF STARK</h3>
+                        <div class="price">Rp 5.300.000,00 IDR</div>
+                    </div>
+                </a>
+                <a href="#" class="card-wrapper">
+                    <div class="card__media ratio" style="--ratio-percent: 100%;">
+                        <img src="https://sneakcares.site/cdn/shop/files/GameOfThronesGreyjoy.jpg?v=1779201726&width=1080" alt="House Greyjoy">
+                    </div>
+                    <div class="card__content">
+                        <h3 class="card__heading">CUSTOM SNEAKERS GAME OF THRONE HOUSE OF GREYJOY</h3>
+                        <div class="price">Rp 5.300.000,00 IDR</div>
+                    </div>
+                </a>
+                <a href="#" class="card-wrapper">
+                    <div class="card__media ratio" style="--ratio-percent: 100%;">
+                        <img src="https://sneakcares.site/cdn/shop/files/Game_Of_ThronesLannister.jpg?v=1776148023&width=1080" alt="House Lannister">
+                    </div>
+                    <div class="card__content">
+                        <h3 class="card__heading">CUSTOM SNEAKERS GAME OF THRONE HOUSE OF LANNISTER</h3>
+                        <div class="price">Rp 5.300.000,00 IDR</div>
+                    </div>
+                </a>
+            </div>
+            <div class="view-all-center">
+                <a href="#" class="button" style="background: transparent; color: var(--color-button);">View all</a>
+            </div>
+        </section>
+
+        <!-- Collage Section 2 -->
+        <section class="collage-section page-width">
+            <h2 class="title" style="margin-bottom: 3rem;">Coming from Mordor!</h2>
+            <div class="collage collage--right">
+                <div style="display:flex; flex-direction:column; gap:2rem;">
+                    <a href="#" class="card-wrapper">
+                        <div class="card__media ratio" style="--ratio-percent: 100%;">
+                            <img src="https://sneakcares.site/cdn/shop/files/Lord_Of_TheRings.jpg?v=1776618732&width=1080" alt="LOTR Sneakers">
+                        </div>
+                        <div class="card__content">
+                            <h3 class="card__heading">CUSTOM SNEAKERS LORD OF THE RINGS UNOFFICIAL</h3>
+                            <div class="price">From Rp 6.600.000,00 IDR</div>
+                        </div>
+                    </a>
+                </div>
+                <a href="#" class="card-wrapper collage__item--large">
+                    <div class="card__media ratio" style="--ratio-percent: 133.9%;">
+                        <img src="https://sneakcares.site/cdn/shop/files/Ganti_sepatu_pada_202604131912.jpg?v=1776993991&width=1500" alt="LOTR Poster">
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <!-- Newsletter -->
+        <section class="newsletter">
+            <h2>Subscribe to our emails</h2>
+            <p>Be the first to know about new collections and exclusive offers.</p>
+            <form class="newsletter-form">
+                <input type="email" placeholder="Email" required>
+                <button type="submit" aria-label="Subscribe">
+                    <svg width="14" height="10" viewBox="0 0 14 10"><path fill="currentColor" fill-rule="evenodd" d="M8.537.808a.5.5 0 0 1 .817-.162l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 1 1-.708-.708L11.793 5.5H1a.5.5 0 0 1 0-1h10.793L8.646 1.354a.5.5 0 0 1-.109-.546" clip-rule="evenodd"/></svg>
+                </button>
+            </form>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="page-width">
+                <div class="footer__content-bottom-wrapper">
+                    <!-- Localization Selectors -->
+                    <div class="footer__localization">
+                        <button class="localization-selector">
+                            <span>India | IDR Rp</span>
+                            <svg viewBox="0 0 10 6"><path fill="currentColor" fill-rule="evenodd" d="M9.354.646a.5.5 0 0 0-.708 0L5 4.293 1.354.646a.5.5 0 0 0-.708.708l4 4a.5.5 0 0 0 .708 0l4-4a.5.5 0 0 0 0-.708" clip-rule="evenodd"/></svg>
+                        </button>
+                        <button class="localization-selector">
+                            <span>English</span>
+                            <svg viewBox="0 0 10 6"><path fill="currentColor" fill-rule="evenodd" d="M9.354.646a.5.5 0 0 0-.708 0L5 4.293 1.354.646a.5.5 0 0 0-.708.708l4 4a.5.5 0 0 0 .708 0l4-4a.5.5 0 0 0 0-.708" clip-rule="evenodd"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Copyright info -->
+                <div class="footer__copyright">
+                    <small>&copy; 2026, <a href="#">Sneakcares Team! Custom Sneakers</a></small>
+                    <small><a href="#">PT Karya Nirwana Pelangi | Indonesia</a></small>
+                    <!-- CMS Open Button -->
+                    <div style="margin-top: 1rem;">
+                        <button class="cms-toggle" onclick="toggleCMS()">Open CMS Panel</button>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- CMS ADMIN PANEL                            -->
+    <!-- ========================================== -->
+    <div id="cms-panel">
+        <div class="cms-header">
+            <h2>Website Content Manager</h2>
+            <button class="cms-close" onclick="toggleCMS()">Exit & View Site</button>
+        </div>
+        <div class="cms-container">
+            <div class="cms-nav">
+                <button class="active" onclick="switchTab('tab-slides')">Hero Slideshow</button>
+                <button onclick="switchTab('tab-collections')">Collections</button>
+                <button onclick="switchTab('tab-content')">Landing Content</button>
+            </div>
+
+            <div class="cms-content">
+                <!-- SLIDES TAB -->
+                <div id="tab-slides" class="tab-pane">
+                    <h3>Add New Slide</h3>
+                    <form class="cms-form" onsubmit="addSlide(event)">
+                        <label>Media Type</label>
+                        <select id="slide-type">
+                            <option value="image">Image</option>
+                            <option value="video">Video</option>
+                        </select>
+
+                        <label>Upload File (Image/Video)</label>
+                        <input type="file" id="slide-file" accept="image/*,video/*">
+                        <small>Or paste URL below if not uploading</small>
+                        <input type="url" id="slide-url" placeholder="https://...">
+
+                        <label>Button Text (Optional)</label>
+                        <input type="text" id="slide-btn-text" placeholder="e.g. Shop Now">
+
+                        <label>Button Link (Optional)</label>
+                        <input type="text" id="slide-btn-url" placeholder="e.g. /collections/all">
+
+                        <button type="submit" id="btn-submit-slide">Add Slide</button>
+                    </form>
+
+                    <h3>Existing Slides</h3>
+                    <table class="data-table">
+                        <thead><tr><th>Preview</th><th>Type</th><th>Button</th><th>Action</th></tr></thead>
+                        <tbody id="cms-slides-table"></tbody>
+                    </table>
+                </div>
+
+                <!-- COLLECTIONS TAB -->
+                <div id="tab-collections" class="tab-pane" style="display:none;">
+                    <h3>Add New Collection</h3>
+                    <form class="cms-form" onsubmit="addCollection(event)">
+                        <label>Collection Title</label>
+                        <input type="text" id="coll-title" required>
+
+                        <label>Upload Image</label>
+                        <input type="file" id="coll-file" accept="image/*">
+                        <small>Or paste URL below</small>
+                        <input type="url" id="coll-url">
+
+                        <label>Link URL</label>
+                        <input type="text" id="coll-link" required>
+
+                        <button type="submit" id="btn-submit-coll">Add Collection</button>
+                    </form>
+
+                    <h3>Existing Collections</h3>
+                    <table class="data-table">
+                        <thead><tr><th>Image</th><th>Title</th><th>Action</th></tr></thead>
+                        <tbody id="cms-coll-table"></tbody>
+                    </table>
+                </div>
+
+                <!-- CONTENT TAB -->
+                <div id="tab-content" class="tab-pane" style="display:none;">
+                    <h3>Edit Rich Text Section</h3>
+                    <form class="cms-form" onsubmit="updateContent(event)">
+                        <label>Title</label>
+                        <input type="text" id="content-title" required>
+
+                        <label>Subtitle / Description</label>
+                        <textarea id="content-subtitle" rows="3" required></textarea>
+
+                        <label>Button Text</label>
+                        <input type="text" id="content-btn-text" required>
+
+                        <label>Button URL</label>
+                        <input type="text" id="content-btn-url" required>
+
+                        <button type="submit" id="btn-submit-content">Update Content</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- SUPABASE & APP LOGIC                       -->
+    <!-- ========================================== -->
+    <script>
+        // ----------------------------------------------------
+        // IMPORTANT: REPLACE WITH YOUR SUPABASE KEYS!
+        // ----------------------------------------------------
+        const SUPABASE_URL = 'https://bfgynclddehatuwfxehr.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_w0MOh_ROJPEEdHTy4KSFxw_jv5H2Ex9';
+        
+        let supabase = null;
+
+        // SAFE SUPABASE INITIALIZATION
+        // This ensures the site won't break if you haven't added your keys yet.
+        try {
+            if(SUPABASE_URL && SUPABASE_URL !== 'https://YOUR_PROJECT_ID.supabase.co') {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+        } catch (error) {
+            console.warn("Supabase credentials missing or invalid. Using fallback data.");
+        }
+
+        // State variables
+        let slideInterval;
+        let currentSlide = 0;
+
+        // Default Mock Data for UI presentation when DB is empty or disconnected
+        const fallbackSlides = [
+            { media_type: 'image', media_url: 'https://sneakcares.site/cdn/shop/files/Web_Snoopy_Space.jpg?v=1778154925&width=3840', btn_text: '', btn_url: '' },
+            { media_type: 'image', media_url: 'https://sneakcares.site/cdn/shop/files/Doraemon_Web.jpg?v=1778026045&width=3840', btn_text: '', btn_url: '' }
+        ];
+
+        const fallbackCollections = [
+            { title: 'Harry Potter', image_url: 'https://sneakcares.site/cdn/shop/collections/Koleksi_Harry_potter.jpg?v=1751966891&width=750', link_url: '#' },
+            { title: 'Adventure Time', image_url: 'https://sneakcares.site/cdn/shop/collections/Koleksi_Adventure_Time.jpg?v=1776070538&width=750', link_url: '#' },
+            { title: 'Doraemon', image_url: 'https://sneakcares.site/cdn/shop/collections/Koleksi_DORAEMON_c2ddf074-6afc-421b-98c6-39f4b2688695.jpg?v=1778024661&width=750', link_url: '#' },
+            { title: 'One Piece', image_url: 'https://sneakcares.site/cdn/shop/collections/Koleksi_One_Piece_73c68969-ea32-4331-8853-513c40c39383.jpg?v=1773815178&width=750', link_url: '#' }
+        ];
+
+        // Start App
+        document.addEventListener("DOMContentLoaded", () => {
+            fetchFrontendData();
+        });
+
+        // ------------------- UI TOGGLES ---------------------
+        function toggleMobileMenu() {
+            const drawer = document.getElementById('mobileDrawer');
+            const overlay = document.getElementById('drawerOverlay');
+            
+            if (drawer.classList.contains('active')) {
+                drawer.classList.remove('active');
+                overlay.classList.remove('active');
+                document.body.style.overflow = 'auto';
+            } else {
+                drawer.classList.add('active');
+                overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function toggleCMS() {
+            const panel = document.getElementById('cms-panel');
+            if(panel.style.display === 'block') {
+                panel.style.display = 'none';
+                document.body.style.overflow = 'auto';
+                fetchFrontendData(); // Refresh UI when closing
+            } else {
+                panel.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+                loadCMSData(); // Load data into CMS
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-pane').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.cms-nav button').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).style.display = 'block';
+            event.target.classList.add('active');
+        }
+
+        // ------------------- FILE UPLOAD HELPER ----------------
+        async function handleFileUpload(fileInput, urlInput) {
+            const file = fileInput.files[0];
+            if (file && supabase) {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+                
+                const { data, error } = await supabase.storage.from('assets').upload(fileName, file);
+                if (error) {
+                    alert('Upload Error: ' + error.message);
+                    return null;
+                }
+                const { data: publicData } = supabase.storage.from('assets').getPublicUrl(fileName);
+                return publicData.publicUrl;
+            }
+            return urlInput.value; // Fallback to pasted URL
+        }
+
+        // ====================================================
+        // DATA FETCHING (FRONTEND)
+        // ====================================================
+        async function fetchFrontendData() {
+            if (!supabase) {
+                // FALLBACK MODE
+                renderSlides(fallbackSlides);
+                renderCollections(fallbackCollections);
+                return;
+            }
+
+            try {
+                // Fetch Slides
+                const { data: slides, error: sErr } = await supabase.from('slides').select('*').order('created_at', { ascending: true });
+                if (!sErr && slides.length > 0) renderSlides(slides);
+                else renderSlides(fallbackSlides); // show fallback if DB is empty
+
+                // Fetch Collections
+                const { data: collections, error: cErr } = await supabase.from('collections').select('*').order('created_at', { ascending: true });
+                if (!cErr && collections.length > 0) renderCollections(collections);
+                else renderCollections(fallbackCollections); // show fallback if DB is empty
+
+                // Fetch Rich Text
+                const { data: content } = await supabase.from('page_content').select('*').eq('section_key', 'rich_text').single();
+                if(content) {
+                    document.getElementById('rt-title').innerText = content.title;
+                    document.getElementById('rt-subtitle').innerText = content.subtitle;
+                    document.getElementById('rt-btn').innerText = content.btn_text;
+                    document.getElementById('rt-btn').href = content.btn_url;
+                }
+            } catch (err) {
+                console.log("Database fetch failed, using fallback UI.");
+                renderSlides(fallbackSlides);
+                renderCollections(fallbackCollections);
+            }
+        }
+
+        // ------------------- RENDER SLIDESHOW ----------------
+        function renderSlides(slides) {
+            const container = document.getElementById('front-slideshow');
+            clearInterval(slideInterval);
+            
+            container.innerHTML = slides.map((slide, index) => {
+                let mediaHtml = '';
+                if(slide.media_type === 'video') {
+                    mediaHtml = `
+                        <video id="vid-${index}" src="${slide.media_url}" loop muted playsinline></video>
+                        <button class="video-controls" onclick="togglePlayPause(${index})">⏸</button>
+                    `;
+                } else {
+                    mediaHtml = `<img src="${slide.media_url}" alt="Slide">`;
+                }
+
+                let btnHtml = slide.btn_text ? `<a href="${slide.btn_url}" class="button">${slide.btn_text}</a>` : '';
+
+                return `
+                    <div class="slide ${index === 0 ? 'active' : ''}" id="slide-${index}">
+                        ${mediaHtml}
+                        <div class="slide-content">${btnHtml}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Autoplay Videos if first slide is video
+            if(slides[0].media_type === 'video') {
+                const firstVid = document.getElementById('vid-0');
+                if(firstVid) firstVid.play().catch(e => console.log('Autoplay blocked'));
+            }
+
+            if(slides.length > 1) {
+                currentSlide = 0;
+                slideInterval = setInterval(() => {
+                    document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+                    currentSlide = (currentSlide + 1) % slides.length;
+                    document.getElementById(`slide-${currentSlide}`).classList.add('active');
+                    
+                    // Handle video playing on focus
+                    if(slides[currentSlide].media_type === 'video') {
+                        const v = document.getElementById(`vid-${currentSlide}`);
+                        if(v) v.play().catch(e=>e);
+                    }
+                }, 5000); 
+            }
+        }
+
+        function togglePlayPause(index) {
+            const vid = document.getElementById(`vid-${index}`);
+            const btn = event.target;
+            if (vid.paused) {
+                vid.play();
+                btn.innerText = '⏸';
+            } else {
+                vid.pause();
+                btn.innerText = '▶';
+            }
+        }
+
+        // ------------------- RENDER COLLECTIONS ----------------
+        function renderCollections(cols) {
+            const container = document.getElementById('front-collections');
+            container.innerHTML = cols.map(c => `
+                <a href="${c.link_url}" class="card-wrapper">
+                    <div class="card__media ratio" style="--ratio-percent: 125%;">
+                        <img src="${c.image_url}" alt="${c.title}">
+                    </div>
+                    <div class="card__content">
+                        <h3 class="card__heading">${c.title} →</h3>
+                    </div>
+                </a>
+            `).join('');
+        }
+
+        // ====================================================
+        // CMS LOGIC (CREATE, READ, DELETE, UPDATE)
+        // ====================================================
+        async function loadCMSData() {
+            if(!supabase) {
+                alert("Supabase is not connected! Please add your SUPABASE_URL and SUPABASE_ANON_KEY inside the script.");
+                return;
+            }
+
+            // Load Slides
+            const { data: slides } = await supabase.from('slides').select('*').order('created_at', { ascending: true });
+            const sTable = document.getElementById('cms-slides-table');
+            sTable.innerHTML = (slides || []).map(s => `
+                <tr>
+                    <td>${s.media_type === 'video' ? '📽️ Video' : `<img src="${s.media_url}">`}</td>
+                    <td>${s.media_type}</td>
+                    <td>${s.btn_text || '-'}</td>
+                    <td><button class="btn-delete" onclick="deleteSlide(${s.id})">Delete</button></td>
+                </tr>
+            `).join('');
+
+            // Load Collections
+            const { data: cols } = await supabase.from('collections').select('*').order('created_at', { ascending: true });
+            const cTable = document.getElementById('cms-coll-table');
+            cTable.innerHTML = (cols || []).map(c => `
+                <tr>
+                    <td><img src="${c.image_url}"></td>
+                    <td>${c.title}</td>
+                    <td><button class="btn-delete" onclick="deleteColl(${c.id})">Delete</button></td>
+                </tr>
+            `).join('');
+
+            // Load Content
+            const { data: content } = await supabase.from('page_content').select('*').eq('section_key', 'rich_text').single();
+            if(content) {
+                document.getElementById('content-title').value = content.title;
+                document.getElementById('content-subtitle').value = content.subtitle;
+                document.getElementById('content-btn-text').value = content.btn_text;
+                document.getElementById('content-btn-url').value = content.btn_url;
+            }
+        }
+
+        async function addSlide(e) {
+            e.preventDefault();
+            if(!supabase) return alert("Connect Supabase first!");
+
+            const btn = document.getElementById('btn-submit-slide');
+            btn.innerText = 'Uploading...';
+            
+            const mediaUrl = await handleFileUpload(document.getElementById('slide-file'), document.getElementById('slide-url'));
+            if(!mediaUrl) { btn.innerText = 'Add Slide'; return; }
+
+            const slideData = {
+                media_type: document.getElementById('slide-type').value,
+                media_url: mediaUrl,
+                btn_text: document.getElementById('slide-btn-text').value,
+                btn_url: document.getElementById('slide-btn-url').value
+            };
+
+            await supabase.from('slides').insert([slideData]);
+            document.querySelector('#tab-slides form').reset();
+            btn.innerText = 'Add Slide';
+            loadCMSData();
+        }
+
+        async function deleteSlide(id) {
+            if(confirm("Delete this slide?")) {
+                await supabase.from('slides').delete().eq('id', id);
+                loadCMSData();
+            }
+        }
+
+        async function addCollection(e) {
+            e.preventDefault();
+            if(!supabase) return alert("Connect Supabase first!");
+
+            const btn = document.getElementById('btn-submit-coll');
+            btn.innerText = 'Uploading...';
+
+            const imgUrl = await handleFileUpload(document.getElementById('coll-file'), document.getElementById('coll-url'));
+            if(!imgUrl) { btn.innerText = 'Add Collection'; return; }
+
+            const colData = {
+                title: document.getElementById('coll-title').value,
+                image_url: imgUrl,
+                link_url: document.getElementById('coll-link').value
+            };
+
+            await supabase.from('collections').insert([colData]);
+            document.querySelector('#tab-collections form').reset();
+            btn.innerText = 'Add Collection';
+            loadCMSData();
+        }
+
+        async function deleteColl(id) {
+            if(confirm("Delete this collection?")) {
+                await supabase.from('collections').delete().eq('id', id);
+                loadCMSData();
+            }
+        }
+
+        async function updateContent(e) {
+            e.preventDefault();
+            if(!supabase) return alert("Connect Supabase first!");
+
+            const btn = document.getElementById('btn-submit-content');
+            btn.innerText = 'Saving...';
+
+            const payload = {
+                section_key: 'rich_text',
+                title: document.getElementById('content-title').value,
+                subtitle: document.getElementById('content-subtitle').value,
+                btn_text: document.getElementById('content-btn-text').value,
+                btn_url: document.getElementById('content-btn-url').value
+            };
+
+            await supabase.from('page_content').upsert(payload);
+            btn.innerText = 'Updated!';
+            setTimeout(() => btn.innerText = 'Update Content', 2000);
+        }
+
+    </script>
+</body>
+</html>
