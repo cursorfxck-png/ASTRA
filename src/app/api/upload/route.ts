@@ -1,7 +1,6 @@
-import { mkdir, writeFile } from "fs/promises";
 import path from "path";
-
 import { NextResponse } from "next/server";
+import { uploadFile } from "@/lib/supabase";
 
 function sanitiseFilename(name: string) {
   return name
@@ -23,7 +22,7 @@ export async function POST(request: Request) {
     const allowed =
       file.type.startsWith("image/") ||
       file.type.startsWith("video/") ||
-      file.name.match(/\.(jpg|jpeg|png|gif|webp|mp4|mov|webm)$/i);
+      file.name.match(/\.(jpg|jpeg|png|gif|webp|avif|mp4|mov|webm)$/i);
 
     if (!allowed) {
       return NextResponse.json(
@@ -32,20 +31,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadDir, { recursive: true });
-
     const parsed = path.parse(file.name);
     const safeBase = sanitiseFilename(parsed.name || "upload");
     const extension = parsed.ext || (file.type.startsWith("video/") ? ".mp4" : ".jpg");
     const filename = `${Date.now()}-${safeBase}${extension}`;
-    const destination = path.join(uploadDir, filename);
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(destination, buffer);
-
+    // Upload to Supabase ONLY
+    const supabasePath = `uploads/${filename}`;
+    const publicUrl = await uploadFile(file, supabasePath);
+    
     return NextResponse.json({
-      url: `/uploads/${filename}`
+      url: publicUrl
     });
   } catch (error) {
     return NextResponse.json(
@@ -56,3 +52,4 @@ export async function POST(request: Request) {
     );
   }
 }
+
